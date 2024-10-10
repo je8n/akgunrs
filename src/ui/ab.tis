@@ -15,171 +15,12 @@ class AddressBook: Reactor.Component
     }();
     
     function render() {
-        if (!handler.get_local_option("access_token")) {
-            return <div style="margin: *"><div #login-link .link style="margin: *; width: 100px; text-align: center; font-size: 1.2em;">{translate("Login")}</div></div>;
-        }
-        if (abLoading) {
-            return <div style="margin: *"><progress style="color: #FF6F41" /></div>;
-        } else if (abError) {
-            return <div style="margin: *; text-align: center;">{abError}
-                <div #retry .link style="margin-left: 1em;">{translate("Retry")}</div>
-            </div>;
-        }
-        var peers = this.getPeers();
-        var me = this;
-        return <div .app #ab style="size:*">
-            <popup>
-                <menu.context #ab-context>
-                    <li #add-id>{translate('Add ID')}</li>
-                    <li #add-tag>{translate('Add Tag')}</li>
-                    <li #unselect-tags>{translate('Unselect all tags')}</li>
-                </menu>
-                <menu.context #tag-context>
-                    <li #remove-tag>{translate('Remove')}</li>
-                </menu>
-            </popup>
-            <div .left-pane>
-                <div style="padding: 0; padding-bottom: 1em" #tags-label>{translate('Tags')}{svg_menu}</div>
-                <div #tags>
-                    {ab.tags.map(function(t) {
-                        return <span class={me.selectedTags.indexOf(t) >= 0 ? "active" : "inactive"}>{t}</span>;
-                    })}
-                </div>
-            </div>
-            <div .right-pane>
-                <div .right-content style="padding-top:0; padding-right: 0;">
-                    <SessionList sessions={peers} type="ab" />
-                </div>
-            </div>
-        </div>;
+        return "";
     }
 
-    event mouseup $(#tags span) (evt, me) { 
-        if(evt.propButton) {
-            current_menu_tag = me.text;
-            me.popup($(#tag-context));
-            return true;
-        }
-    }
-    
-    event click $(#retry) (_, __) {
-        refreshCurrentUser();
-    }
-
-    event click $(#login-link) (_, __) {
-        login();
-    }
-
-    event click $(#tags-label svg#menu) (_, me) {
-        me.popup($(#ab-context));
-    }
-    
-    event click $(#add-id) (_, __) {
-        var me = this;
-        msgbox(
-            "custom-add-id",
-            translate("Add ID"),
-            <div .form>
-            <div>{translate("whitelist_sep")}</div> 
-            <textarea .outline-focus spellcheck="false" name="text" style="overflow: scroll-indicator; width:*; height: 160px; font-size: 1.2em; padding: 0.5em;"></textarea>
-            </div>,
-            "",
-            function(res=null) {
-                if (!res) return;
-                var value = (res.text || "").trim();
-                var values = value.split(/[\s,;\n]+/g);
-                if (values.length == 0) return;
-                for (var v in values) {
-                    var found;
-                    for (var i = 0; i < ab.peers.length; ++i) {
-                        if (ab.peers[i].id == v) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (found) continue;
-                    ab.peers.push({ id: v });
-                }
-                updateAb();
-                me.update();
-            },
-        300);
-    }
-    
-    event click $(#add-tag) (_, __) {
-        var me = this;
-        msgbox("custom-add-tag", translate("Add Tag"), <div .form>
-            <div>{translate("whitelist_sep")}</div> 
-            <textarea .outline-focus spellcheck="false" name="text" style="overflow: scroll-indicator; width:*; height: 160px; font-size: 1.2em; padding: 0.5em;"></textarea>
-            </div>, "", function(res=null) {
-            if (!res) return;
-            var value = (res.text || "").trim();
-            var values = value.split(/[\s,;\n]+/g);
-            if (values.length == 0) return;
-            for (var v in values) {
-                if (ab.tags.indexOf(v) < 0) {
-                    ab.tags.push(v);
-                }
-            }
-            updateAb();
-            me.update();
-        }, 300);
-    }
-    
-    event click $(#remove-tag) (_, me) {
-        var i = ab.tags.indexOf(tag);
-        ab.tags.splice(i, 1);
-        for (var p in ab.peers) {
-            if (p.tags) {
-                i = p.tags.indexOf(tag);
-                if (i >= 0) p.tags.splice(i, 1);
-            }
-        }
-        updateAb();
-        this.update();
-    }
-    
-    event click $(#unselect-tags) (_, me) {
-        this.selectedTags = [];
-        handler.set_local_option("selected-tags", "");
-        this.update();
-    }
-
-    event click $(#tags span) (_, me) {
-        me.attributes.toggleClass('active');
-        if (me.attributes.hasClass('active')) {
-            this.selectedTags.push(me.text);
-        } else {
-            this.selectedTags.splice(this.selectedTags.indexOf(me.text), 1);
-        }
-        handler.set_local_option("selected-tags", this.selectedTags.join(','));
-        this.update();
-    }
 
     function getPeers() {
-        var tags = [];
-        for (var t in this.selectedTags) {
-            if (ab.tags.indexOf(t) >= 0) tags.push(t);
-        }
-        if (tags.length != this.selectedTags.length) {
-            this.selectedTags = tags;
-            handler.set_local_option("selected-tags", tags.join(","));
-            stdout.println("updated selected tags");
-        }
-        if (tags.length == 0) return ab.peers;
         var peers = [];
-        if (tags.length > 0) {
-            for (var p in ab.peers) {
-                for (var t in (p.tags || [])) {
-                    if (tags.indexOf(t) >= 0) {
-                        peers.push(p);
-                        break;
-                    }
-                }
-            }
-        } else {
-            peers = ab.peers;
-        }
         return peers;
     }
 }
@@ -191,12 +32,7 @@ class SelectTags: Reactor.Component {
     }
     
     function render() {
-        var me = this;
-        return <div #tags>
-            {ab.tags.map(function(t) {
-                return <span class={me.tags.indexOf(t) >= 0 ? "active" : "inactive"}>{t}</span>;
-            })}
-        </div>;
+        return "";
     }
 
     event click $(#tags span) (_, me) {
@@ -235,14 +71,7 @@ class SearchBar: Reactor.Component {
     }
 
     function render() {
-        var value = searchPatterns[this.type] || "";
-        var me = this;
-        self.timer(1ms, function() { (me.search_id || {}).value = value; });
-        return <div .search-id style="margin-left: 12px">
-            <span .search-icon>{search_icon}</span>
-            <input|text @{this.search_id} novalue={translate("Search ID")} />
-            {value && <span .clear-input>{clear_icon}</span>}
-        </div>;
+        return "";
     }
 
     event click $(span.clear-input) {
@@ -267,23 +96,9 @@ class SessionStyle: Reactor.Component {
     }
 
     function render() {
-        var sessionsStyle = getSessionsStyle(this.type);
-        return <div .sessions-tab style="margin-left: 0.5em;">
-                <span class={sessionsStyle == "tile" ? "active" : "inactive"}>{svg_tile}</span>
-                <span class={sessionsStyle != "tile" ? "active" : "inactive"}>{svg_list}</span>
-            </div>;
+        return "";
     }
 
-    event click $(span.inactive) {
-        var option = getSessionsStyleOption(this.type);
-        var sessionsStyle = getSessionsStyle(this.type);
-        handler.set_local_option(option, sessionsStyle == "tile" ? "list" : "tile");
-        if (is_linux) {
-            app.multipleSessions.stupidUpdate();
-        } else {
-            app.multipleSessions.update();
-        }
-    }
 }
 
 class SessionList: Reactor.Component {
@@ -297,226 +112,12 @@ class SessionList: Reactor.Component {
         this.style = getSessionsStyle(this.type);
     }
 
-    function getSessions() {
-        var p = searchPatterns[this.type];
-        if (!p) return this.sessions;
-        var tmp = [];
-        this.sessions.map(function(s) {
-            var name = (s[4] || s.alias || "").toLowerCase();
-            var id = (s[0] || s.id || "").toLowerCase();
-            var user = (s[1] || "").toLowerCase();
-            var hostname = (s[2] || "").toLowerCase();
-            if (name.indexOf(p) >= 0 || id.indexOf(p) >= 0 || user.indexOf(p) >= 0 || hostname.indexOf(p) >= 0) {
-                tmp.push(s);
-            }
-        });
-        return tmp;
-    }
-
     function render() {
-        var sessions = this.getSessions();
-        if (sessions.length == 0) {
-            return <div style="margin: *; font-size: 1.6em; width: 100px; text-align: center;">{translate("Empty")}</div>;
-        }
-        var me = this;
-        sessions = sessions.map(function(x) { return me.getSession(x); });
-        return <div .recent-sessions-content key={sessions.length}>
-            <popup>
-                <menu.context #remote-context>
-                    <li #connect>{translate('Connect')}</li>
-                    <li #transfer>{translate('Transfer file')}</li>
-                    <li #tunnel>{translate('TCP tunneling')}</li>
-                    <li #force-always-relay><span>{svg_checkmark}</span>{translate('Always connect via relay')}</li>
-                    <li #rdp>RDP<EditRdpPort /></li>
-                    <li #wol>{translate('WOL')}</li>
-                    <div .separator />
-                    {this.type != "lan" && <li #rename>{translate('Rename')}</li>}
-                    {this.type != "fav" && <li #remove>{translate('Remove')}</li>}
-                    {is_win && <li #shortcut>{translate('Create desktop shortcut')}</li>}
-                    <li #forget-password>{translate('Forget Password')}</li>
-                    {(!this.type || this.type == "fav") && <li #add-fav>{translate('Add to Favorites')}</li>}
-                    {(!this.type || this.type == "fav") && <li #remove-fav>{translate('Remove from Favorites')}</li>}
-                    {this.type == "ab" && <li #edit-tag>{translate('Edit Tag')}</li>}
-                </menu>
-            </popup>
-            {sessions}
-        </div>;
+        return "";
     }
 
     function getSession(s) {
-        var id = s[0] || s.id || "";
-        var username = s[1] || s.username || "";
-        var hostname = s[2] || s.hostname || "";
-        var platform = s[3] || s.platform || "";
-        var alias = s[4] || s.alias || "";
-        if (this.style == "list") {
-            return <div .remote-session-link .remote-session-list id={id} platform={platform} title={alias ? "ID: " + id : ""}>
-                <div .platform style={"background:"+string2RGB(id+platform, 0.5)}>
-                    {platform && platformSvg(platform, "white")}
-                </div>
-                <div .name>
-                    <div>
-                        <div #alias .ellipsis>{alias ? alias : formatId(id)}</div>
-                        <div .username .ellipsis>{username}@{hostname}</div>
-                    </div>
-                </div>
-                <div>
-                    {svg_menu}
-                </div>
-            </div>;
-        }
-        return <div .remote-session-link .remote-session id={id} platform={platform} title={alias ? "ID: " + id : ""} style={"background:"+string2RGB(id+platform, 0.5)}>
-            <div .platform>
-                {platform && platformSvg(platform, "white")}
-                <div .username .ellipsis>{username}@{hostname}</div>
-            </div>
-            <div .text>
-                <div #alias .ellipsis>{alias ? alias : formatId(id)}</div>
-                {svg_menu}
-            </div>
-        </div>;
-    }
-
-    event dblclick $(div.remote-session-link) (evt, me) {
-        createNewConnect(me.id, "connect");
-    }
-    
-    event click $(#menu) (_, me) {
-        var id = me.parent.parent.id;
-        var platform = me.parent.parent.attributes["platform"];
-        this.$(#rdp).style.set{
-            display: (platform == "Windows" && is_win) ? "block" : "none",
-        };
-        this.$(#forget-password).style.set{
-            display: handler.peer_has_password(id) ? "block" : "none",
-        };
-        if (!this.type || this.type == "fav") {
-            var in_fav = handler.get_fav().indexOf(id) >= 0;
-            this.$(#add-fav).style.set{
-                display: in_fav ? "none" : "block",
-            };
-            this.$(#remove-fav).style.set{
-                display: in_fav ? "block" : "none",
-            };
-        }
-        // https://sciter.com/forums/topic/replacecustomize-context-menu/
-        var menu = this.$(menu#remote-context);
-        current_menu_peer_id = id;
-        var el = this.$(li#force-always-relay);
-        if (el) {
-          var force = handler.get_peer_option(id, "force-always-relay");
-          el.attributes.toggleClass("selected", force == "Y");
-        }
-        var conn = this.$(menu #connect);
-        if (conn) {
-          var alias = me.parent.parent.$(#alias);
-          if (alias) {
-            alias = alias.text.replace(' ', '');
-            if (alias != id) {
-              conn.text = translate('Connect') + ' ' + id;
-            } else {
-              conn.text = translate('Connect');
-            }
-          }
-        }
-        me.popup(menu);
-    }
-
-    event click $(menu#remote-context li) (evt, me) {
-        var action = me.id;
-        var id = current_menu_peer_id;
-        if (action == "connect") {
-            createNewConnect(id, "connect");
-        } else if (action == "transfer") {
-            createNewConnect(id, "file-transfer");
-        } else if (action == "wol") {
-            handler.send_wol(id);
-        } else if (action == "remove") {
-            if (this.type == "ab") {
-                for (var i = 0; i < ab.peers.length; ++i) {
-                    if (ab.peers[i].id == id) {
-                        ab.peers.splice(i, 1);
-                        app.update();
-                        updateAb();
-                        break;
-                    }
-                }
-            } else if (this.type == "lan") {
-                handler.remove_discovered(id);
-                app.update();
-            } else {
-                handler.remove_peer(id);
-                app.update();
-            }
-        } else if (action == "forget-password") {
-            handler.forget_password(id);
-        } else if (action == "shortcut") {
-            handler.create_shortcut(id);
-        } else if (action == "rdp") {
-            if (is_edit_rdp_port) {
-                is_edit_rdp_port = false;
-                return;
-            }
-            createNewConnect(id, "rdp");
-        } else if (action == "add-fav") {
-            var favs = handler.get_fav();
-            if (favs.indexOf(id) < 0) {
-                favs = [id].concat(favs);
-                handler.store_fav(favs);
-            }
-            app.multipleSessions.update();
-            app.update();
-        } else if (action == "remove-fav") {
-            var favs = handler.get_fav();
-            var i = favs.indexOf(id);
-            favs.splice(i, 1);
-            handler.store_fav(favs);
-            app.multipleSessions.update();
-        } else if (action == "tunnel") {
-            createNewConnect(id, "port-forward");
-        } else if (action == "rename") {
-            var old_name = handler.get_peer_option(id, "alias");
-            var abPeer;
-            if (this.type == "ab") {
-                for (var v in ab.peers) {
-                    if (v.id == id) {
-                        abPeer = v;
-                        old_name = v.alias || "";
-                    }
-                }
-            }
-            msgbox("custom-rename", "Rename", "<div .form> \
-                <div><input|text name='name' .outline-focus style='width: *; height: 23px', value='" + old_name + "' /></div> \
-                </div> \
-                ", "", function(res=null) {
-                    if (!res) return;
-                    var name = (res.name || "").trim();
-                    if (name != old_name) {
-                        if (abPeer) {
-                            abPeer.alias = name;
-                            updateAb();
-                        }
-                        handler.set_peer_option(id, "alias", name);
-                    }
-                    app.update();
-                });
-        } else if (action == "force-always-relay") {
-            var force = handler.get_peer_option(id, "force-always-relay");
-            handler.set_peer_option(id, "force-always-relay", force == "Y" ? "" : "Y");
-        } else if (action == "edit-tag") {
-            var peer;
-            for (var v in ab.peers) {
-                if (v.id == id) {
-                    peer = v;
-                }
-            }
-            if (!peer) return;
-            msgbox("custom-edit-tag", "Edit Tag", <SelectTags tags={peer.tags || []} />, "", function(res=null) {
-                    if (!res) return;
-                    peer.tags = selectTags.tags;
-                    updateAb();
-                }, 260, 500, 0, "size: *; margin: 2em 0;");
-        }
+        return "";
     }
 }
 
@@ -526,55 +127,17 @@ function getSessionsType() {
 
 class Favorites: Reactor.Component {
     function render() {
-        var sessions = handler.get_fav().map(function(f) {
-            return handler.get_peer(f);
-        });
-        return <SessionList sessions={sessions} type="fav" />;
+        return "";
     }
 }
 
 class MultipleSessions: Reactor.Component {
     function render() {
-        var type = getSessionsType();
-        return  <div style="size: *;position:relative;z-index:2;">
-                <div .sessions-bar>
-                    <div style="width:*" .sessions-tab #sessions-type>
-                        <span class={!type ? 'active' : 'inactive'}>{translate('Recent sessions')}</span>
-                        <span #fav class={type == "fav" ? 'active' : 'inactive'}>{translate('Favorites')}</span>
-                        {handler.is_installed() && <span #lan class={type == "lan" ? 'active' : 'inactive'}>{translate('Discovered')}</span>}
-                        <span #ab class={type == "ab" ? 'active' : 'inactive'}>{translate('Address book')}</span>
-                    </div>
-                    {!this.hidden && <SearchBar type={type} />}
-                    {!this.hidden && <SessionStyle type={type} />}
-                </div>
-                {!this.hidden && 
-                ((type == "fav" && <Favorites />) ||
-                (type == "lan" && handler.is_installed() && <LanPeers />) ||
-                (type == "ab" && <AddressBook />) ||
-                <SessionList sessions={handler.get_recent_sessions()} />)}
-            </div>;
+        return  "";
     }
 
     function stupidUpdate() {
-        /* hidden is workaround of stupid sciter bug */
-        this.hidden = true;
-        this.update();
-        var me = this;
-        self.timer(60ms, function() {
-            me.hidden = false;
-            me.update();
-	    self.timer(30ms, function() { me.onSize(); });
-        });
     }
-
-    event click $(div#sessions-type span.inactive) (_, el) {
-        if (el.id == "lan") {
-            discover();
-        }
-        handler.set_local_option('show-sessions-type', el.id || "");
-        this.stupidUpdate();
-    }
-
     function onSize() {
         var w = this.$(.sessions-bar .sessions-tab).box(#width);
         var len = translate('Recent sessions').length;
@@ -653,51 +216,11 @@ function updateAb() {
 }
 
 function resetAb() {
-    ab = { tags: [], peers: [] };
-    app.update();
+	return;
 }
 
 function updateAbPeer() {
-    if (ab.peers.length == 0) return;
-    // to-do: inefficient
-    var sessions = handler.get_recent_sessions();
-    if (sessions.length == 0) return;
-    var s = sessions[0];
-    var id = s[0] || "";
-    var p;
-    for (var tmp in ab.peers) {
-        if (tmp.id == id) p = tmp;
-    }
-    if (!p) return;
-    var username = s[1] || "";
-    var hostname = s[2] || "";
-    var platform = s[3] || "";
-    var alias = s[4] || "";
-    var updated;
-    if (username != (p.username || "")) {
-        p.username = username;
-        updated = true;
-    }
-    if (hostname != (p.hostname || "")) {
-        p.hostname = hostname;
-        updated = true;
-    }
-    if (platform != (p.platform || "")) {
-        p.platform = platform;
-        updated = true;
-    }
-    if (alias != (p.alias || "")) {
-        if (alias) {
-            p.alias = alias;
-        } else if (p.alias) {
-            handler.set_peer_option(id, "alias", p.alias);
-        }
-        updated = true;
-    }
-    if (updated) {
-        updateAb();
-        stdout.println("Ab peer updated");
-    }
+	return;
 }
 
 var is_edit_rdp_port;
@@ -715,39 +238,5 @@ class EditRdpPort: Reactor.Component {
 }
 
 function editRdpPort() {
-    var id = current_menu_peer_id;
-    var p0 = handler.get_peer_option(id, "rdp_port");
-    var port = p0 ? <input|text name='port' value={p0} /> : 
-                    <input|text name='port' novalue={3389} />;
-    var name0 = handler.get_peer_option(id, "rdp_username");
-    var pass0 = handler.get_peer_option(id, "rdp_password");
-    msgbox("custom-rdp-port", 'RDP ' + translate('Settings'), <div .form .set-password> 
-            <div><span>{translate('Port')}:</span>{port}</div> 
-            <div><span>{translate('Username')}:</span><input|text name="username" value={name0} /></div> 
-            <div><span>{translate('Password')}:</span><PasswordComponent value={pass0} /></div> 
-        </div>, "", function(res=null) {
-        if (!res) return;
-        var p = (res.port || '').trim();
-        if (p != p0) {
-            if (!p) p = '0';
-            p = p.toNumber();
-            if (p < 0 || p != p.toInteger()) {
-                return translate("Invalid port");
-            }
-            if (p == 0) p = "";
-            else p = p.toInteger() + '';
-            handler.set_peer_option(id, "rdp_port", p);
-        }
-
-        var name = (res.username || '').trim();
-        if (name != name0) {
-            handler.set_peer_option(id, "rdp_username", name);
-        }
-
-        var pass = (res.password || '').trim();
-        if (pass != pass0) {
-            handler.set_peer_option(id, "rdp_password", pass);
-        }
-      }, 240);
+	return;
 }
-

@@ -16,6 +16,30 @@ function isEnterKey(evt) {
               (is_linux && evt.keyCode == 65421));
 }
 
+function akgun_api_post($uri,$data,$success,$error=null) {
+    httpRequest(handler.get_api_server() + $uri, #post, $data, function(data) {
+        if (data) {
+            if (data.error) {
+                if(typeof $error == 'function'){
+                    $error(data.error);
+                }else{
+                    akgun_error(data.error);
+                }
+                return;
+            }
+            if(data.success){
+                if(typeof $success == 'function'){
+                    $success(data);
+                }
+            }
+        }
+    }, function(err, status) {
+        if(typeof $error == 'function'){
+            $error(err);
+        }
+    }, getHttpHeaders());
+}
+
 function getScaleFactor() {
     if (!is_win) return 1;
     return self.toPixels(10000dip) / 10000.;

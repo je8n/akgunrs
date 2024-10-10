@@ -39,12 +39,16 @@ class ConnectStatus: Reactor.Component {
 
     function getConnectStatusStr() {
         if (service_stopped) {
+            handler.set_option("online", "");
             return translate("Service is not running");
         } else if (connect_status == -1) {
+            handler.set_option("online", "");
             return translate('not_ready_status');
         } else if (connect_status == 0) {
+            handler.set_option("online", "");
             return translate('connecting_status');
         }
+        handler.set_option("online", "Y");
         if (!handler.using_public_server()) return translate('Ready');
         return <span>{translate("Ready")}, <span .link #setup-server>{translate("setup_server_tip")}</span></span>;
     }
@@ -66,18 +70,8 @@ function createNewConnect(id, type) {
     }
 }
 function _createNewConnect(id, type) {
-    id = id.replace(/\s/g, "");
-    app.remote_id.value = formatId(id);
-    if (!id) return;
-    var old_id = id;
-    id = handler.handle_relay_id(id);
-    var force_relay = old_id != id; 
-    if (id == my_id) {
-        msgbox("custom-error", "Error", "You cannot connect to your own computer");
+        msgbox("custom-error", "Error", translate("AccessDenied"));
         return;
-    }
-    handler.set_remote_id(id);
-    handler.new_remote(id, type, force_relay);
 }
 
 class ShareRdp: Reactor.Component {
@@ -1156,11 +1150,6 @@ function checkConnectStatus() {
         tmp = handler.get_software_update_url();
         if (tmp != software_update_url) {
             software_update_url = tmp;
-            app.update();
-        }
-        if (handler.recent_sessions_updated()) {
-            stdout.println("recent sessions updated");
-            updateAbPeer();
             app.update();
         }
         check_if_overlay();

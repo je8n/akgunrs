@@ -63,6 +63,7 @@ async fn start_hbbs_sync_async() {
             _ = interval.tick() => {
                 let url = heartbeat_url();
                 let id = Config::get_id();
+                let now_online = Config::get_option("online");
                 if url.is_empty() {
                     *PRO.lock().unwrap() = false;
                     continue;
@@ -81,6 +82,7 @@ async fn start_hbbs_sync_async() {
                     // real user name not uploaded after login screen. https://github.com/rustdesk/rustdesk/discussions/8031
                     if !cfg!(windows) || !v["username"].as_str().unwrap_or_default().is_empty() {
                         v["version"] = json!(crate::VERSION);
+                        v["online"] = json!(now_online);
                         v["id"] = json!(id);
                         v["uuid"] = json!(crate::encode64(hbb_common::get_uuid()));
                         let ab_name = Config::get_option(keys::OPTION_PRESET_ADDRESS_BOOK_NAME);
@@ -124,6 +126,7 @@ async fn start_hbbs_sync_async() {
                 let mut v = Value::default();
                 v["id"] = json!(id);
                 v["uuid"] = json!(crate::encode64(hbb_common::get_uuid()));
+                v["online"] = json!(now_online);
                 v["ver"] = json!(hbb_common::get_version_number(crate::VERSION));
                 if !conns.is_empty() {
                     v["conns"] = json!(conns);
