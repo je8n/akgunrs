@@ -239,5 +239,6 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("DeniedBeforeLogin","Connection cannot be made without logging in."),
         ("DeniedUserNotFound","User not found."),
         ("DeniedUserTrying","You have logged in incorrectly more than once. wait 15 minutes."),
+        ("PleaseWaitRemoteAccept","Wait for the connection request to be accepted remotely..."),
     ].iter().cloned().collect();
 }

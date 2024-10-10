@@ -1,6 +1,5 @@
 var selectTags = [];
 var ab = { tags: [], peers: []};
-var akgun_ab = { clients: [], groups: [], client_keys : [], group_keys: []}
 var abLoading;
 var abError;
 var current_menu_peer_id = '';
@@ -107,7 +106,7 @@ class AddressBook: Reactor.Component
                 };
 
                 var $json_data = JSON.stringify(formdata,  function(k, v) { return v === undefined ? null : v; })
-                update_akgun_ab_api("/api/ab/client/remove",$json_data,function(data){
+                akgun_api_post("/api/ab/client/remove",$json_data,function(data){
                     getAb();
                 });
             },
@@ -176,7 +175,7 @@ class AddressBook: Reactor.Component
                     };
                 }
                 var $json_data = JSON.stringify(formdata,  function(k, v) { return v === undefined ? null : v; })
-                update_akgun_ab_api("/api/ab/client/update",$json_data,function(data){
+                akgun_api_post("/api/ab/client/update",$json_data,function(data){
                     getAb();
                 });
             },
@@ -207,7 +206,7 @@ class AddressBook: Reactor.Component
                     };
 
                     var $json_data = JSON.stringify(formdata,  function(k, v) { return v === undefined ? null : v; })
-                    update_akgun_ab_api("/api/ab/group/rename",$json_data,function(data){
+                    akgun_api_post("/api/ab/group/rename",$json_data,function(data){
                         getAb();
                     });
                 },
@@ -270,7 +269,7 @@ class AddressBook: Reactor.Component
                     };
                 }
                 var $json_data = JSON.stringify(formdata,  function(k, v) { return v === undefined ? null : v; })
-                update_akgun_ab_api("/api/ab/client/add",$json_data,function(data){
+                akgun_api_post("/api/ab/client/add",$json_data,function(data){
                     getAb();
                 });
             },
@@ -421,30 +420,6 @@ class AddressBook: Reactor.Component
         }
         handler.set_local_option("selected-tags", this.selectedTags.join(','));
         this.update();
-    }
-
-    function update_akgun_ab_api($uri,$data,$success,$error=null) {
-        httpRequest(handler.get_api_server() + $uri, #post, $data, function(data) {
-            if (data) {
-                if (data.error) {
-                    if(typeof $error == 'function'){
-                        $error(data.error);
-                    }else{
-                        akgun_error(data.error);
-                    }
-                    return;
-                }
-                if(data.success){
-                    if(typeof $success == 'function'){
-                        $success(data);
-                    }
-                }
-            }
-        }, function(err, status) {
-            if(typeof $error == 'function'){
-                $error(err);
-            }
-        }, getHttpHeaders());
     }
 
 
@@ -1005,18 +980,6 @@ function handleAbError(err) {
     app.update();
 }
 
-function get_group($id){
-    if(akgun_ab.groups[$id]){
-        return akgun_ab.groups[$id];
-    }
-    return false;
-}
-function get_client($id){
-    if(akgun_ab.clients[$id]){
-        return akgun_ab.clients[$id];
-    }
-    return false;
-}
 
 function getAb() {
     abLoading = true;
