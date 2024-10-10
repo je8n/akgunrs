@@ -1,0 +1,22 @@
+name: Build Windows x86 - CM Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - CM
+    paths-ignore:
+      - ".github/**"
+      - "docs/**"
+      - "README.md"
+      - "res/**"
+      - "appimage/**"
+      - "flatpak/**"
+
+jobs:
+  run-flutter-nightly-build:
+    uses: ./.github/workflows/windowsx86-build-cm.yml
+    secrets: inherit
+    with:
+      upload-artifact: true
+      upload-tag: "WindowsX86"
