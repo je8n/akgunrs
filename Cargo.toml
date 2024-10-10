@@ -1,6 +1,6 @@
 [package]
 name = "akgunrs"
-version = "1.5.1"
+version = "1.5.2"
 authors = ["AKGUN <info@akgun.com.tr>"]
 edition = "2021"
 build= "build.rs"

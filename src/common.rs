@@ -869,7 +869,7 @@ pub fn get_custom_rendezvous_server(custom: String) -> String {
     if !config::PROD_RENDEZVOUS_SERVER.read().unwrap().is_empty() {
         return config::PROD_RENDEZVOUS_SERVER.read().unwrap().clone();
     }
-    "http://rs.akgun.com.tr".to_owned()
+    "".to_owned()
 }
 
 pub fn get_api_server(api: String, custom: String) -> String {
@@ -877,7 +877,7 @@ pub fn get_api_server(api: String, custom: String) -> String {
     if !api.is_empty() {
         return api.into();
     }
-    "http://teknikws.akgun.com.tr/ui/akgunrs".to_owned()
+    "".to_owned()
 }
 
 pub fn get_audit_server(api: String, custom: String, typ: String) -> String {

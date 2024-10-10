@@ -22,11 +22,6 @@ var msgboxTimerFunc = function() {}
 function closeMsgbox() {
     self.timer(0, msgboxTimerFunc);
     $(#msgbox).content(<span />);
-/*
-    if($(#msgbox div[msgbox-ignore-buttons]).length>0){
-    $(#msgbox a:last).attributes.addClass("hidden");
-    }
-*/
 }
 
 class MsgboxComponent: Reactor.Component {
@@ -47,7 +42,7 @@ class MsgboxComponent: Reactor.Component {
 
     function getIcon(color) {
         if (this.type == "input-password" || this.type == "session-login" || this.type == "session-login-password" || this.type == "input-2fa") {
-            return <svg viewBox="0 0 505 505"><circle cx="252.5" cy="252.5" r="252.5" fill={color}/><path d="M271.9 246.1c29.2 17.5 67.6 13.6 92.7-11.5 29.7-29.7 29.7-77.8 0-107.4s-77.8-29.7-107.4 0c-25.1 25.1-29 63.5-11.5 92.7L118.1 347.4l26.2 26.2 26.4 26.4 10.6-10.6-10.1-10.1 9.7-9.7 10.1 10.1 10.6-10.6-10.1-10 9.7-9.7 10.1 10.1 10.6-10.6-26.4-26.3 76.4-76.5z" fill="#fff"/><circle cx="337.4" cy="154.4" r="17.7" fill={color}/></svg>;
+            return <svg viewBox="0 0 505 505" xmlns="http://www.w3.org/2000/svg"><g transform="matrix(0.765498, 0, 0, 0.765498, 59.578735, 57.058743)" style=""><g><g><g><path style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" d="M84.516,343.25c-3.023,0-5.922-1.719-7.273-4.648c-1.852-4.008-0.102-8.766,3.914-10.617 l106.352-49.086c4.023-1.852,8.766-0.094,10.617,3.914s0.102,8.766-3.914,10.617L87.859,342.516 C86.773,343.016,85.633,343.25,84.516,343.25z"></path></g></g><g><g><path style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" d="M205.305,213.086c-2.047,0-4.094-0.781-5.656-2.344l-70.461-70.461 c-3.125-3.125-3.125-8.188,0-11.313s8.188-3.125,11.312,0l70.461,70.461c3.125,3.125,3.125,8.187,0,11.312 C209.398,212.305,207.351,213.086,205.305,213.086z"></path></g></g><g><g><path style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" d="M307.133,213.086c-2.047,0-4.094-0.781-5.656-2.344c-3.125-3.125-3.125-8.188,0-11.312 L402.969,97.945c3.125-3.125,8.188-3.125,11.313,0s3.125,8.187,0,11.312L312.789,210.742 C311.226,212.305,309.18,213.086,307.133,213.086z"></path></g></g><g><g><path style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" d="M449.594,457.375c-2.047,0-4.094-0.781-5.656-2.344L301.469,312.562 c-3.125-3.125-3.125-8.187,0-11.312s8.188-3.125,11.312,0L455.25,443.719c3.125,3.125,3.125,8.188,0,11.313 C453.687,456.594,451.64,457.375,449.594,457.375z"></path></g></g><g><g><path style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" d="M269.305,408c-4.094,0-7.578-3.125-7.961-7.273l-6.578-72.305 c-0.398-4.398,2.844-8.297,7.242-8.695c4.477-0.383,8.289,2.852,8.695,7.242l6.578,72.305c0.398,4.398-2.844,8.297-7.242,8.695 C269.789,407.992,269.547,408,269.305,408z"></path></g></g><g><circle style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" cx="256.219" cy="256" r="80"></circle></g><g><circle style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" cx="276" cy="236" r="28"></circle></g><g><circle style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" cx="47.89" cy="351.89" r="47.89"></circle></g><g><circle style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" cx="59.732" cy="339.918" r="16.762"></circle></g><g><circle style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" cx="448.109" cy="63.89" r="63.89"></circle></g><g><circle style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" cx="463.907" cy="47.918" r="22.362"></circle></g><g><circle style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" cx="111.89" cy="112.11" r="39.89"></circle></g><g><circle style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" cx="121.754" cy="102.137" r="13.962"></circle></g><g><circle style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" cx="471.89" cy="472.109" r="39.89"></circle></g><g><circle style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" cx="481.754" cy="462.137" r="13.962"></circle></g><g><circle style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" cx="272.109" cy="432.109" r="39.89"></circle></g><g><circle style="fill: rgb(255, 111, 65); stroke: rgb(255, 111, 65); stroke-width: 24.3902px;" cx="281.973" cy="422.137" r="13.962"></circle></g></g></g></svg>;
         }
         if (this.type == "connecting") {
             return <svg viewBox="0 0 300 300"><g fill={color}><path d="m221.76 89.414h-143.51c-1.432 0-2.594 1.162-2.594 2.594v95.963c0 1.432 1.162 2.594 2.594 2.594h143.51c1.432 0 2.594-1.162 2.594-2.594v-95.964c0-1.431-1.162-2.593-2.594-2.593z"/><path d="m150 0c-82.839 0-150 67.161-150 150s67.156 150 150 150 150-67.163 150-150-67.164-150-150-150zm92.508 187.97c0 11.458-9.29 20.749-20.749 20.749h-47.144v11.588h23.801c4.298 0 7.781 3.483 7.781 7.781s-3.483 7.781-7.781 7.781h-96.826c-4.298 0-7.781-3.483-7.781-7.781s3.483-7.781 7.781-7.781h23.801v-11.588h-47.145c-11.458 0-20.749-9.29-20.749-20.749v-95.963c0-11.458 9.29-20.749 20.749-20.749h143.51c11.458 0 20.749 9.29 20.749 20.749v95.963z"/></g><path d="m169.62 154.35c-5.0276-5.0336-11.97-8.1508-19.624-8.1508-7.6551 0-14.597 3.1172-19.624 8.1508l-11.077-11.091c7.8656-7.8752 18.725-12.754 30.701-12.754s22.835 4.8788 30.701 12.754l-11.077 11.091zm-32.184 7.0728 12.56 12.576 12.56-12.576c-3.2147-3.2172-7.6555-5.208-12.56-5.208-4.9054 0-9.3457 1.9908-12.56 5.208zm12.56-39.731c14.403 0 27.464 5.8656 36.923 15.338l11.078-11.091c-12.298-12.314-29.276-19.94-48-19.94-18.724 0-35.703 7.626-48 19.94l11.077 11.091c9.4592-9.4728 22.52-15.338 36.923-15.338z" fill="#fff"/></svg>;
@@ -119,7 +114,7 @@ class MsgboxComponent: Reactor.Component {
 
     function getColor() {
         if (this.type == "input-password" || this.type == "input-2fa" || this.type == "custom-os-password" || this.type == "session-login" || this.type == "session-login-password") {
-            return "#AD448E";
+            return "#FF8F63";
         }
         if (this.type == "success") {
             return "#32bea6";
@@ -153,31 +148,59 @@ class MsgboxComponent: Reactor.Component {
                 me.$(#content).content(content);
         };
         self.timer(3ms, msgboxTimerFunc);
-        return (<div><div style="position: absolute; size:*; background:black; opacity:0.5;" />
-        <div style="size: *; position: absolute;">
-            <div style={"border: " + color + " solid 1px; background: color(bg); margin: *; width:" + (this.width) + "px; min-height:" + (this.height) + "px"}>
-            <div .caption style={"background: " + color}>
-                {translate(this.title)}
-            </div>
-            <div style="padding: 1em 2em; size: *;">
-                <div style="height: *; flow: horizontal">
-                    {icon && <div style="height: *; margin: * 0; padding-right: 2em;" .msgbox-icon>{icon}</div>}
-                    <div style={this.contentStyle || "size: *; margin: * 0;"} #content />
+
+        if(this.type=="input-password"){
+
+            return (<div><div style="position: absolute; size:*; background:black; opacity:0.5;" />
+            <div style="size: *; position: absolute;">
+                <div style={"border: " + color + " solid 1px; background: color(bg); margin: *; width:" + (this.width) + "px; min-height:" + (this.height) + "px"}>
+                <div .caption style={"background: " + color}>
+                    {translate(this.title)}
                 </div>
-                <div>
-                    <span style="display:inline-block; max-width: 250px; font-size:12px;" #error />
-                    <progress #progress style={"color:" + color + "; display: " + (show_progress ? "inline-block" : "none")} />
-                    <div style="text-align: right;">
-                        {hasCancel || this.hasRetry ? <button .button #cancel .outline>{translate(this.hasRetry ? "OK" : "Cancel")}</button> : ""}
-                        {this.hasSkip() ? <button .button #skip .outline>{translate('Skip')}</button> : ""}
-                        {hasOk || this.hasRetry ? <button .button #submit>{translate(this.hasRetry ? "Retry" : "OK")}</button> : ""}
-                        {hasLink ? <button .button #jumplink .outline>{translate('JumpLink')}</button> : ""}
-                        {hasClose ? <button .button #cancel .outline>{translate('Close')}</button> : ""}
+                <div style="padding: 1em 2em; size: *;">
+                    <div style="height: *; flow: horizontal">
+                        {icon && <div style="height: *; margin: * 0; padding-right: 2em;" .msgbox-icon>{icon}</div>}
+                        <div style={this.contentStyle || "size: *; margin: * 0;"} #content />
+                    </div>
+                    <div>
+                        <span style="display:inline-block; max-width: 250px; font-size:12px;" #error />
+                        <progress #progress style={"color:" + color + "; display: " + (show_progress ? "inline-block" : "none")} />
+                        <div style="text-align: right;">
+                            {hasCancel  ? <button .button #cancel .outline>{translate("Cancel")}</button> : ""}
+                        </div>
                     </div>
                 </div>
-            </div>
-            </div>
-        </div></div>);
+                </div>
+            </div></div>);
+        }else{
+
+            return (<div><div style="position: absolute; size:*; background:black; opacity:0.5;" />
+            <div style="size: *; position: absolute;">
+                <div style={"border: " + color + " solid 1px; background: color(bg); margin: *; width:" + (this.width) + "px; min-height:" + (this.height) + "px"}>
+                <div .caption style={"background: " + color}>
+                    {translate(this.title)}
+                </div>
+                <div style="padding: 1em 2em; size: *;">
+                    <div style="height: *; flow: horizontal">
+                        {icon && <div style="height: *; margin: * 0; padding-right: 2em;" .msgbox-icon>{icon}</div>}
+                        <div style={this.contentStyle || "size: *; margin: * 0;"} #content />
+                    </div>
+                    <div>
+                        <span style="display:inline-block; max-width: 250px; font-size:12px;" #error />
+                        <progress #progress style={"color:" + color + "; display: " + (show_progress ? "inline-block" : "none")} />
+                        <div style="text-align: right;">
+                            {hasCancel || this.hasRetry ? <button .button #cancel .outline>{translate(this.hasRetry ? "OK" : "Cancel")}</button> : ""}
+                            {this.hasSkip() ? <button .button #skip .outline>{translate('Skip')}</button> : ""}
+                            {hasOk || this.hasRetry ? <button .button #submit>{translate(this.hasRetry ? "Retry" : "OK")}</button> : ""}
+                            {hasLink ? <button .button #jumplink .outline>{translate('JumpLink')}</button> : ""}
+                            {hasClose ? <button .button #cancel .outline>{translate('Close')}</button> : ""}
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div></div>);
+
+        }
     }
 
     event click $(.custom-event) (_, me) {
@@ -282,13 +305,13 @@ class MsgboxComponent: Reactor.Component {
             "margin-top":"2em",
             "min-height" : "2px",
         };
-        this.$(#error).text = err;
+        this.$(#error).html = err;
         this.$(#error).style.set {
             display: show ? "none" : "block",
             "margin-top":"2em",
             "margin-bottom":"1em",
         };
-        this.$(#error).text = err;
+        this.$(#error).html = err;
     }
     
     function getValues() {

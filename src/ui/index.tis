@@ -39,12 +39,16 @@ class ConnectStatus: Reactor.Component {
 
     function getConnectStatusStr() {
         if (service_stopped) {
+            handler.set_option("online", "");
             return translate("Service is not running");
         } else if (connect_status == -1) {
+            handler.set_option("online", "");
             return translate('not_ready_status');
         } else if (connect_status == 0) {
+            handler.set_option("online", "");
             return translate('connecting_status');
         }
+        handler.set_option("online", "Y");
         if (!handler.using_public_server()) return translate('Ready');
         return <span>{translate("Ready")}, <span .link #setup-server>{translate("setup_server_tip")}</span></span>;
     }
@@ -76,6 +80,9 @@ function _createNewConnect(id, type) {
         msgbox("custom-error", "Error", "You cannot connect to your own computer");
         return;
     }
+    var client = get_client(id);
+    var name = client.title;
+    handler.set_peer_option(id, "alias", name);
     handler.set_peer_option(id, "force-always-relay", "Y");
     handler.set_remote_id(id);
     handler.new_remote(id, type, force_relay);
