@@ -1,0 +1,1124 @@
+var selectTags = [];
+var ab = { tags: [], peers: []};
+var abLoading;
+var abError;
+var current_menu_peer_id = '';
+
+class AddressBook: Reactor.Component
+{
+    this var style;
+    this var selectedTags = function() {
+        var tags = handler.get_local_option("selected-tags");
+        if (tags) return tags.split(",");
+        return [];
+    }();
+    this var selectedItemId = "";
+    this var selectedItemText = "";
+    this var selectedItemState = true;
+    this var selectedGroupId = "";
+    this var selectedGroupText = "";
+
+    this var selectedItemRemoveAll = false;
+    
+    function render() {
+        if (!handler.get_local_option("access_token")) {
+            return <div style="width:100%"><div style="margin: *"><div #login-link .link style="margin: *; width: 100px; text-align: center; font-size: 1.2em;">{translate("Login")}</div></div></div>;
+        }
+        if (abLoading) {
+            return <div style="margin: *"><progress style="color: #0071ff" /></div>;
+        } else if (abError) {
+            return <div style="margin: *; text-align: center;">{abError}
+            </div>;
+        }
+        var peers = this.getPeers();
+        var me = this;
+        return <div .app #AkgunAddressBook style="size:*">
+            <popup>
+                <menu.context #ab-group-menu>
+                    <li #ab-group-item-add>Add</li>
+                    <li #ab-group-edit>Rename</li>
+                </menu>
+                <menu.context #ab-item-menu>
+                { this.selectedItemState ? <li #ab-item-connect-rdp>Connect via RDP</li> : ""}
+                { this.selectedItemState ? <li #ab-item-file-transfer>File Transfer</li> : ""}
+                    <li #ab-item-edit>Edit</li>
+                    <li #ab-item-remove-group>Remove in group</li>
+                </menu>
+            </popup>
+                <div #tags >
+                    <ul>
+                     {akgundata.group_keys.map(function(groupId) {
+                     var group = get_group(groupId);
+                     return <li><a id={group.id} class={(groupId=="-recent") ? "active" : ""} .abGroupName><div .abGroupNameSvgDown>{svg_down}</div><div .abGroupNameSvgRight>{svg_right}</div>{group.title}</a><ul> {group.clients.map(function(clientId) {
+                            var client = get_client(clientId);
+                            return <li .abGroupListItem active={client.status} id={client.id}>{ (client.status=="online") ? svg_mac_online : svg_mac}{client.title}</li>;
+                        })}</ul></li>;
+                    })}
+                    </ul>
+                </div>
+            <div .right-pane style="display:none;">
+                <div .right-content style="padding-top:0; padding-right: 0;">
+                    <SessionList sessions={peers} type="ab" />
+                </div>
+            </div>
+        </div>;
+    }
+
+    event click $(#ab-item-remove) (evt, me) {
+        var me = this;
+        var client_id = this.selectedItemId;
+        var group_id = this.selectedGroupId;
+        var client_text = this.selectedItemText;
+        remove_client(client_id,client_text,group_id,"1");
+    }
+    event click $(#ab-item-remove-group) (evt, me) {
+        var me = this;
+        var client_id = this.selectedItemId;
+        var group_id = this.selectedGroupId;
+        var client_text = this.selectedItemText;
+        remove_client(client_id,client_text,group_id,"0");
+    }
+
+    function remove_client(client_id,client_text,group_id,removeAll="0"){
+        msgbox(
+            "abAddClientRemove",
+            "Remove Connection",
+            <div .form>
+            <div>Client ID</div>
+            <input readonly style="display:block;size:*;margin:10px;padding-left:25px;" name="abClientId" value={client_id}></input>
+            <div>Client Title</div>
+            <input readonly style="display:block;size:*;margin:10px;padding-left:25px;" name="abClientTitle" value={client_text}></input>
+            <p>{ (removeAll=="0") ? "Are you sure remove connection on the list?" : "Are you sure remove client all list?" }</p>
+            </div>,
+            "",
+            function(res=null) {
+                var formdata = new Object();
+                if (!res) return;
+
+                formdata.client = {
+                    "uuid" : handler.get_uuid(),
+                    "id" : client_id,
+                    "group" : group_id,
+                    "removeAll" : removeAll,
+                };
+
+                var $json_data = JSON.stringify(formdata,  function(k, v) { return v === undefined ? null : v; });
+                $json_data = JSON.parse($json_data);
+                akgun_api_post("/api/ab/client/remove",$json_data,function(data){
+                    getAb();
+                });
+            },
+        100);
+    }
+
+    event click $(#ab-item-edit) (evt, me) {
+
+        var me = this;
+
+        var group_id = this.selectedGroupId;
+        var group_item = get_group(group_id);
+
+        var client_id = this.selectedItemId;
+        var client_item = get_client(client_id);
+
+        var ab_items_order = 0;
+        var ab_items_id = [];
+
+        msgbox(
+            "abEditGroupItem",
+            "Edit Client",
+            <div .form>
+            <div>Connection ID</div>
+            <input type="number" style="display:block;size:*;width:unset!important;margin:10px;padding-left:0px;text-indent:15px;font-size:15px;" name="abAddConnId" value={client_id}></input>
+            <div>Connection Title</div> 
+            <input style="display:block;size:*;margin:10px;padding-left:15px;font-size:15px;" name="abAddConnTitle" value={client_item.title}></input>
+            <div>Connection Description</div> 
+            <textarea style="display:block;size:*;margin:10px;padding-left:15px;font-size:15px;min-height:150px" rows="10" name="abAddConnDesc">{client_item.desc}</textarea>
+            <div>Choose AddressBooks</div> 
+            {akgundata.group_keys.map(function(groupId) {
+                var group = get_group(groupId);
+                if(group["is_group"]==true){
+
+                    ab_items_id.push(group.id);
+                    if(client_item.groups.indexOf(group.id)>=0){
+                        return <input style="display:block;size:*;margin:10px;padding-left:25px;" type="checkbox" checked name={"AddressBooks_" +(ab_items_order++)}>{group.title}</input>;
+                    }else{
+                        return <input style="display:block;size:*;margin:10px;padding-left:25px;" type="checkbox" name={"AddressBooks_" +(ab_items_order++)}>{group.title}</input>;
+                    }
+                }
+            })}
+            </div>,
+            "",
+            function(res=null) {
+                var formdata = new Object();
+                if (!res) return;
+                var connId = res.abAddConnId;
+                var connText = res.abAddConnTitle;
+                var connDesc = res.abAddConnDesc;
+
+                formdata.item = {
+                    "type" : "item",
+                    "group" : group_id,
+                    "client" : client_id,
+                };
+
+                formdata.client = {
+                    "uuid" : handler.get_uuid(),
+                    "type" : "client",
+                    "id" : connId,
+                    "title" : connText,
+                    "desc" : connDesc
+                };
+
+                for (var i = 0; i < ab_items_order; ++i) {
+                    var groupId = ab_items_id[i];
+                    var groupCheck = res["AddressBooks_"+i];
+                    formdata["group_"+i] = {
+                        "type" : "group",
+                        "id" : groupId,
+                        "value" : groupCheck
+                    };
+                }
+                var $json_data = JSON.stringify(formdata,  function(k, v) { return v === undefined ? null : v; });
+                $json_data = JSON.parse($json_data);
+                akgun_api_post("/api/ab/client/update",$json_data,function(data){
+                    getAb();
+                },function(err){
+                });
+            },
+        600);
+    }
+
+    event click $(#ab-group-edit) (evt, me) {
+        var me = this;
+        var group_id = this.selectedGroupId;
+        var group_item = get_group(group_id);
+        if(group_item["is_group"]){
+            msgbox(
+                "abAddGroupRename",
+                "Rename AddressBook",
+                <div .form>
+                <div>Group Title</div>
+                <input style="display:block;size:*;margin:10px;padding-left:25px;" name="abGroupTitle" value={group_item.title}></input>
+                </div>,
+                "",
+                function(res=null) {
+                    var formdata = new Object();
+                    if (!res) return;
+                    var groupTitle = res.abGroupTitle;
+
+                    formdata.group = {
+                        "id" : group_id,
+                        "title" : groupTitle
+                    };
+
+                    var $json_data = JSON.stringify(formdata,  function(k, v) { return v === undefined ? null : v; })
+                    $json_data = JSON.parse($json_data);
+                    akgun_api_post("/api/ab/group/rename",$json_data,function(data){
+                        getAb();
+                    });
+                },
+            100);
+        }
+    }
+    event click $(#ab-group-item-add) (evt, me) {
+        var me = this;
+        var id = "";
+        var group_id = this.selectedGroupId;
+        var ab_items_order = 0;
+        var ab_items_id = [];
+
+        msgbox(
+            "abAddGroupItem",
+            "Add to AddressBook",
+            <div .form>
+            <div>Connection ID</div>
+            <input type="number" style="display:block;size:*;width:unset!important;margin:10px;padding-left:0px;font-size:15px;" name="abAddConnId" value={id}></input>
+            <div>Connection Title</div> 
+            <input style="display:block;size:*;margin:10px;padding-left:25px;font-size:15px;" name="abAddConnTitle"></input>
+            <div>Connection Description</div> 
+            <textarea style="display:block;size:*;margin:10px;padding-left:25px;font-size:15px;min-height:150px" rows="10" name="abAddConnDesc"></textarea>
+            <div>Choose AddressBooks</div> 
+            {akgundata.group_keys.map(function(groupId) {
+                var group = get_group(groupId);
+                if(group["is_group"]==true){
+                    ab_items_id.push(group.id);
+                    if(group.id==group_id){
+                        return <input style="display:block;size:*;margin:10px;padding-left:25px;" type="checkbox" checked name={"AddressBooks_" +(ab_items_order++)}>{group.title}</input>;
+                    }else{
+                        return <input style="display:block;size:*;margin:10px;padding-left:25px;" type="checkbox" name={"AddressBooks_" +(ab_items_order++)}>{group.title}</input>;
+                    }
+                }
+            })}
+            <span style="color:red" id="abAddGroupItemError"></span>
+            </div>,
+            "",
+            function(res=null) {
+                var formdata = new Object();
+                if (!res) return;
+                var connId = res.abAddConnId;
+                var connText = res.abAddConnTitle;
+                var connDesc = res.abAddConnDesc;
+
+                formdata.client = {
+                    "uuid" : handler.get_uuid(),
+                    "type" : "client",
+                    "id" : connId,
+                    "title" : connText,
+                    "desc" : connDesc
+                };
+
+                for (var i = 0; i < ab_items_order; ++i) {
+                    var groupId = ab_items_id[i];
+                    var groupCheck = res["AddressBooks_"+i];
+                    formdata["group_"+i] = {
+                        "type" : "group",
+                        "id" : groupId,
+                        "value" : groupCheck
+                    };
+                }
+                var $json_data = JSON.stringify(formdata,  function(k, v) { return v === undefined ? null : v; })
+                $json_data = JSON.parse($json_data);
+                akgun_api_post("/api/ab/client/add",$json_data,function(data){
+                    getAb();
+                });
+            },
+        600);
+    }
+    event click $(#ab-item-connect-rdp) (evt, me) {
+        var client = get_client(this.selectedItemId);
+        if(client.rdp.connect){
+            handler.set_peer_option(this.selectedItemId, "rdp_port", client.rdp.port);
+            handler.set_peer_option(this.selectedItemId, "rdp_username", client.rdp.username);
+            handler.set_peer_option(this.selectedItemId, "rdp_password", client.rdp.password);
+        }
+        createNewConnect(this.selectedItemId, "rdp");
+    }
+    event click $(#ab-item-file-transfer) (evt, me) {
+        createNewConnect(this.selectedItemId, "transfer");
+    }    
+    event dblclick $(li.abGroupListItem) (evt, me) {
+        createNewConnect(me.id, "connect");
+    }
+    event mouseup $(a.abGroupName) (evt, me) {
+        this.selectedGroupId = me.id;
+        this.selectedGroupText = me.text;
+        if(evt.propButton) {
+            var currentGroup = get_group(this.selectedGroupId);
+            if(currentGroup.rules.write==true){
+                $(#ab-group-menu #ab-group-item-add).attributes.removeClass("hidden");
+                $(#ab-group-menu #ab-group-edit).attributes.removeClass("hidden");
+            }else{
+                $(#ab-group-menu #ab-group-item-add).attributes.addClass("hidden");
+                $(#ab-group-menu #ab-group-edit).attributes.addClass("hidden");
+            }
+            me.popup($(#ab-group-menu));
+            return true;
+        }
+    }
+    event mouseup $(li.abGroupListItem) (evt, me) { 
+        this.selectedGroupId = me.parent.prior.id;
+        this.selectedGroupText = me.parent.prior.text;
+        this.selectedItemId = me.id;
+        this.selectedItemText = me.text;
+        this.selectedItemState = true;
+        if(evt.propButton) {
+            var currentGroup = get_group(this.selectedGroupId);
+            if(currentGroup.rules.remove==true){
+                $(#ab-item-menu #ab-item-remove-group).attributes.removeClass("hidden");
+            }else{
+                $(#ab-item-menu #ab-item-remove-group).attributes.addClass("hidden");
+            }
+            me.popup($(#ab-item-menu));
+            return true;
+        }
+    }
+    
+    event click $(#retry) (_, __) {
+        refreshCurrentUser();
+    }
+
+    event click $(#login-link) (_, __) {
+        login();
+    }
+
+    event click $(.abGroupName) (evt, me) {
+        me.attributes.toggleClass("active");
+    }
+
+    event click $(#tags-label svg#menu) (_, me) {
+        me.popup($(#ab-context));
+    }
+    
+    event click $(#add-id) (_, __) {
+        var me = this;
+        msgbox(
+            "custom-add-id",
+            translate("Add ID"),
+            <div .form>
+            <div>{translate("whitelist_sep")}</div> 
+            <textarea .outline-focus spellcheck="false" name="text" style="overflow: scroll-indicator; width:*; height: 160px; font-size: 1.2em; padding: 0.5em;"></textarea>
+            </div>,
+            "",
+            function(res=null) {
+                if (!res) return;
+                var value = (res.text || "").trim();
+                var values = value.split(/[\s,;\n]+/g);
+                if (values.length == 0) return;
+                for (var v in values) {
+                    var found;
+                    for (var i = 0; i < ab.peers.length; ++i) {
+                        if (ab.peers[i].id == v) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) continue;
+                    ab.peers.push({ id: v });
+                }
+                updateAb();
+                me.update();
+            },
+        300);
+    }
+    
+    event click $(#add-tag) (_, __) {
+        var me = this;
+        msgbox("custom-add-tag", translate("Add Tag"), <div .form>
+            <div>{translate("whitelist_sep")}</div> 
+            <textarea .outline-focus spellcheck="false" name="text" style="overflow: scroll-indicator; width:*; height: 160px; font-size: 1.2em; padding: 0.5em;"></textarea>
+            </div>, "", function(res=null) {
+            if (!res) return;
+            var value = (res.text || "").trim();
+            var values = value.split(/[\s,;\n]+/g);
+            if (values.length == 0) return;
+            for (var v in values) {
+                if (ab.tags.indexOf(v) < 0) {
+                    ab.tags.push(v);
+                }
+            }
+            updateAb();
+            me.update();
+        }, 300);
+    }
+    
+    event click $(#remove-tag) (_, me) {
+        var i = ab.tags.indexOf(tag);
+        ab.tags.splice(i, 1);
+        for (var p in ab.peers) {
+            if (p.tags) {
+                i = p.tags.indexOf(tag);
+                if (i >= 0) p.tags.splice(i, 1);
+            }
+        }
+        updateAb();
+        this.update();
+    }
+    
+    event click $(#unselect-tags) (_, me) {
+        this.selectedTags = [];
+        handler.set_local_option("selected-tags", "");
+        this.update();
+    }
+
+    event click $(#tags span) (_, me) {
+        me.attributes.toggleClass('active');
+        if (me.attributes.hasClass('active')) {
+            this.selectedTags.push(me.text);
+        } else {
+            this.selectedTags.splice(this.selectedTags.indexOf(me.text), 1);
+        }
+        handler.set_local_option("selected-tags", this.selectedTags.join(','));
+        this.update();
+    }
+
+
+    function getPeers() {
+        var tags = [];
+        for (var t in this.selectedTags) {
+            if (ab.tags.indexOf(t) >= 0) tags.push(t);
+        }
+        if (tags.length != this.selectedTags.length) {
+            this.selectedTags = tags;
+            handler.set_local_option("selected-tags", tags.join(","));
+            stdout.println("updated selected tags");
+        }
+        if (tags.length == 0) return ab.peers;
+        var peers = [];
+        if (tags.length > 0) {
+            for (var p in ab.peers) {
+                for (var t in (p.tags || [])) {
+                    if (tags.indexOf(t) >= 0) {
+                        peers.push(p);
+                        break;
+                    }
+                }
+            }
+        } else {
+            peers = ab.peers;
+        }
+        return peers;
+    }
+}
+
+class SelectTags: Reactor.Component {
+    function this(params) {
+        selectTags = this;
+        this.tags = params.tags;
+    }
+    
+    function render() {
+        return "";
+    }
+
+    event click $(#tags span) (_, me) {
+        me.attributes.toggleClass('active');
+        var i = this.tags.indexOf(me.text);
+        if (i < 0) {
+            this.tags.push(me.text);
+        } else {
+            this.tags.splice(i, 1);
+        }
+    }
+}
+
+var svg_refresh = <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" xml:space="preserve"><path fill="#282D33" d="M83.569 23.449a53.434 53.434 0 0 0-1.792-.631l1.271-3.812c.646.215 1.284.439 1.92.675l-1.399 3.768zM117.807 68.162a52.515 52.515 0 0 0-.443-3.689l3.969-.622c.205 1.308.366 2.646.479 3.975l-4.005.336zm-1.153-7.337a49.97 49.97 0 0 0-.969-3.586l3.84-1.188a55.053 55.053 0 0 1 1.043 3.867l-3.914.907zm-2.191-7.096a50.69 50.69 0 0 0-1.474-3.408l3.63-1.726a55.732 55.732 0 0 1 1.587 3.677l-3.743 1.457zm-3.19-6.708a52.249 52.249 0 0 0-1.943-3.166l3.348-2.223a57.116 57.116 0 0 1 2.094 3.412l-3.499 1.977zm-4.107-6.191a52.458 52.458 0 0 0-2.372-2.862l3.002-2.672a57.535 57.535 0 0 1 2.553 3.082l-3.183 2.452zm-4.941-5.554a54.16 54.16 0 0 0-2.75-2.506l2.602-3.063a58.671 58.671 0 0 1 2.956 2.693l-2.808 2.876zm-5.667-4.812a53.506 53.506 0 0 0-3.072-2.099l2.148-3.396c1.122.71 2.234 1.47 3.304 2.257l-2.38 3.238zm-6.285-3.979a52.88 52.88 0 0 0-3.334-1.649l1.655-3.661a58.472 58.472 0 0 1 3.586 1.773l-1.907 3.537zM122.012 72.579h-4.019c0-.636-.012-1.269-.033-1.898l4.016-.14c.024.677.036 1.355.036 2.038z"/><g><path fill="#282D33" d="M63.996 128c-31.985 0-58.008-25.702-58.008-57.296 0-31.59 26.022-57.289 58.009-57.289v4.018c-29.771 0-53.99 23.897-53.99 53.271 0 29.377 24.219 53.278 53.989 53.278 29.771 0 53.992-23.901 53.992-53.278h4.019c0 31.594-26.024 57.296-58.011 57.296z"/></g><g><path fill="#282D33" d="m50.089 33.563-2.822-2.86 14.103-13.92L47.267 2.859 50.09 0l17 16.783z"/></g></svg>
+var svg_mac_online = <svg class="svg-mac" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25"><path d="M 22.478 2.868 L 2.503 2.868 C 2.253 2.868 2.05 3.071 2.05 3.321 L 2.05 16.94 C 2.05 17.189 2.253 17.393 2.503 17.393 L 10.286 17.393 C 10.422 18.127 10.4 18.884 10.222 19.608 C 10.072 20.118 9.833 20.596 9.523 21.024 L 7.044 21.024 C 6.694 21.024 6.477 21.405 6.651 21.705 C 6.73 21.848 6.88 21.933 7.044 21.933 L 17.941 21.933 C 18.29 21.933 18.508 21.555 18.333 21.252 C 18.251 21.113 18.101 21.024 17.941 21.024 L 15.462 21.024 C 15.148 20.596 14.912 20.118 14.763 19.608 C 14.581 18.884 14.559 18.127 14.698 17.393 L 22.478 17.393 C 22.728 17.393 22.934 17.189 22.934 16.94 L 22.934 3.321 C 22.934 3.071 22.728 2.868 22.478 2.868 Z M 13.853 19.854 C 13.974 20.264 14.146 20.656 14.363 21.024 L 10.621 21.024 C 10.835 20.656 11.007 20.264 11.128 19.854 C 11.338 19.051 11.37 18.209 11.221 17.393 L 13.8 17.393 C 13.635 18.209 13.657 19.048 13.853 19.854 Z M 22.025 16.487 L 2.96 16.487 L 2.76 16.772 L 21.996 16.622 C 22.346 16.622 22.164 16.494 21.993 16.191 C 21.911 16.051 22.407 16.066 22.246 16.066 L 22.16 3.514 L 2.76 3.364 L 2.96 3.774 L 22.025 3.774 L 22.025 16.487 Z" style="fill: rgb(35, 31, 32);"></path></svg>
+var svg_mac = <svg class="svg-mac" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25"><path d="M23.5 2h-22a.5.5 0 0 0-.5.5v15a.5.5 0 0 0 .5.5h8.57a5.73 5.73 0 0 1-.07 2.44A5.11 5.11 0 0 1 9.23 22H6.5a.5.5 0 0 0 0 1h12a.5.5 0 0 0 0-1h-2.73a5.11 5.11 0 0 1-.77-1.56 5.73 5.73 0 0 1-.07-2.44h8.57a.5.5 0 0 0 .5-.5v-15a.5.5 0 0 0-.5-.5zM14 20.71a6 6 0 0 0 .56 1.29h-4.12a6 6 0 0 0 .56-1.29 6.25 6.25 0 0 0 .1-2.71h2.84a6.25 6.25 0 0 0 .06 2.71zM23 17H2v-1h18.5a.5.5 0 0 0 0-1H2V3h21z" style="fill:#231f20"/></svg>
+var svg_down = <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M12 17.414 3.293 8.707l1.414-1.414L12 14.586l7.293-7.293 1.414 1.414L12 17.414z"/></svg>
+var svg_right = <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><path d="M7.293 4.707 14.586 12l-7.293 7.293 1.414 1.414L17.414 12 8.707 3.293 7.293 4.707z"/></svg>
+var svg_tile = <svg #session-tile viewBox="0 0 158.6 158.6"><path style="stroke-width:.309756" d="M5.4 157.7c-1-.3-2-1-3.2-2.1-2.8-2.8-2.6-1-2.5-32 0-26.7 0-27 .7-28.3a9.3 9.3 0 0 1 4-4.2c1.2-.6 2.3-.6 29-.7 27.5 0 27.6 0 29.1.6.8.4 2 1.2 2.7 2 2.4 2.5 2.3.7 2.2 31.6-.1 26.5-.1 27.6-.7 28.8a9.3 9.3 0 0 1-4.2 4c-1.4.6-1.6.6-28.5.7a235 235 0 0 1-28.6-.4zm91 0a8.5 8.5 0 0 1-5.7-5.4c-.2-.7-.3-8.3-.3-28.3V96.7l.7-1.6a8.9 8.9 0 0 1 4.6-4.3c1.2-.4 3.8-.5 28.9-.4 26.6.1 27.6.1 28.8.7 1.6.8 3.2 2.5 4 4.2.7 1.4.7 1.6.7 28.3.1 31 .3 29.2-2.5 32-2.8 2.7-1 2.6-31.4 2.6-21.4 0-26.8-.1-27.9-.5zM5.3 67a8.7 8.7 0 0 1-4-3C-.5 61.6-.5 62.3-.5 33.6-.4 3.2-.5 5 2.2 2.2 5-.6 3.2-.4 34.2-.3c26.7 0 27 0 28.3.7 1.7.8 3.4 2.4 4.2 4 .6 1.2.6 2.2.7 28.8 0 25.1 0 27.7-.4 29a9 9 0 0 1-4.3 4.5l-1.6.7H33.7c-20.2 0-27.7-.1-28.4-.4Zm89.8-.3a9 9 0 0 1-4.3-4.6c-.5-1.2-.5-3.8-.5-28.9.1-26.6.2-27.6.7-28.8a9.3 9.3 0 0 1 4.2-4c1.4-.7 1.6-.7 28.3-.7 31-.1 29.2-.3 32 2.5 2.8 2.8 2.6 1 2.5 32 0 26.7 0 26.9-.7 28.3a9.3 9.3 0 0 1-4 4.2c-1.2.5-2.2.6-29 .6l-27.7.1z" transform="translate(.4 .4)"/></svg>;
+var svg_list = <svg #session-list viewBox="0 0 246.8 185.8"><path style="stroke-width:.482473" d="M-69.2 102.7A16.5 16.5 0 0 1-67 70.4c7.3-1 15 4 17.3 11 1 3 1 8 0 10.8a16.7 16.7 0 0 1-19.5 10.5zm53-3.4a12.3 12.3 0 0 1-7-16.8c1.3-3 3.1-4.7 6-6 2.2-1 2.8-1 87.2-1 92.4 0 87-.2 90.6 2.6.9.7 2.2 2.4 3 3.7 1.2 2.2 1.4 3.1 1.4 6 0 4.8-2.3 8.6-6.8 11l-1.9 1-85.2.1c-71.9 0-85.5 0-87.3-.6zm-53.5-73c-4.7-1.5-8.6-5-10.6-9.1-1.8-4-1.8-9.8 0-13.7 1.6-3.3 4.4-6.2 7.8-8 2.2-1.2 3-1.3 7.1-1.3 4 0 5 .1 7.3 1.3a16.6 16.6 0 0 1 0 29.6c-2 1-3.4 1.4-6.5 1.5-2.2 0-4.5 0-5.1-.3zm52.3-4.8c-2.4-1.1-5.3-4-6.2-6.5-1-2.4-1-7.3.1-9.7.5-1.1 1.8-2.8 2.8-3.8 3.7-3.5-4-3.2 91-3.2h85.5l2.5 1.1a12 12 0 0 1 0 21.8l-2.5 1.2H70.2c-82.5 0-85.7 0-87.6-1zm-52.1-71.6a18 18 0 0 1-10-7.7 17 17 0 0 1-.7-15c2.3-5 5.8-7.9 11.4-9.3 9-2.3 18.3 4 19.8 13.4a16.4 16.4 0 0 1-15.2 19c-2.1.1-4.1 0-5.3-.4zm52.1-5.9c-1.3-.6-3-1.7-3.7-2.5-4.7-5-4.2-13.7 1-18 3.7-3.1-1.8-3 91.5-2.8l84.9.1 2 1a12 12 0 0 1 6.7 11c0 3-.2 3.9-1.4 6-.8 1.4-2.1 3-3 3.8-3.7 2.7 1.8 2.6-90.6 2.6h-85l-2.4-1.2z" transform="translate(81.7 82.6)"/></svg>;
+var search_icon = <svg viewBox="0 0 655.278 655.024"><g transform="translate(-24.497 -195.01)"><path d="m649.96 847.92c-2.9592-1.3629-27.183-24.243-63.36-59.846-32.213-31.702-70.814-69.663-85.78-84.357l-27.21-26.717-4.7897 3.5287c-66.337 48.872-145.32 66.878-224.31 51.138-72.966-14.539-136.58-58.184-178.47-122.44-15.945-24.462-30.723-61.471-36.413-91.191-8.9404-46.696-6.2422-90.39 8.3388-135.04 13.39-41.003 34.756-75.42 66.479-107.09 74.506-74.377 183.71-99.89 284.22-66.397 62.352 20.777 117.67 65.579 150.79 122.12 38.716 66.101 46.59 147.55 21.43 221.66-9.9038 29.171-29.788 63.725-49.916 86.743l-7.0583 8.0717 3.0992 2.919c1.7046 1.6054 40.675 39.928 86.602 85.161 89.007 87.664 87.558 86.034 85.619 96.293-1.2888 6.8209-5.2313 12.041-11.321 14.989-6.7901 3.287-11.55 3.4093-17.952 0.46117zm-316.64-154.63c32.373-5.0481 61.075-15.115 86.553-30.358 47.942-28.683 83.505-72.09 100.89-123.14 35.043-102.91-6.4362-214.07-100.89-270.37-52.514-31.302-117.76-40.564-178.06-25.277-81.183 20.579-145.19 82.918-166.86 162.52-5.5757 20.478-7.445 35.423-7.445 59.52s1.8693 39.042 7.445 59.52c21.409 78.63 85.366 141.52 164.81 162.05 29.22 7.5511 66.493 9.756 93.564 5.5347z" stroke-width="1.28"/></g></svg>;
+var clear_icon = <svg viewBox="0 0 478.94 479.03"><path d="M217.488 478.45c-30.264-3.146-55.348-10.265-82.714-23.477C62.54 420.1 14.214 353.763 1.824 272.463c-2.412-15.82-2.434-50.027-.043-66.058 16.004-107.32 97.008-188.28 204.71-204.6 14.33-2.172 49.054-2.447 63-.498C323.95 8.915 371.3 32.2 409.03 69.927c37.697 37.698 61.125 85.349 68.605 139.54 1.943 14.08 1.68 48.804-.478 63-6.616 43.533-24.01 83.859-50.468 117-37.556 47.046-92.812 78.608-153.26 87.54-12.553 1.855-44.144 2.671-55.936 1.445zm42.144-32.045c15.649-1.602 29.895-4.63 44.856-9.531 78.146-25.604 133.49-94.718 141.94-177.26 6.245-60.993-16.1-123.3-59.94-167.14-55.797-55.797-139.4-75.365-213.52-49.98-77.69 26.609-131.51 94.14-140.42 176.19-4.761 43.843 6.392 91.899 30.274 130.44 41.468 66.926 119.01 105.26 196.82 97.29zm-138.69-80.346c-4.096-1.784-8.225-6.874-9.022-11.123-1.676-8.935-3.495-6.761 52.877-63.221l52.17-52.25-52.17-52.25c-56.544-56.632-54.56-54.249-52.834-63.451.924-4.923 6.905-10.904 11.828-11.828 9.201-1.726 6.819-3.71 63.451 52.834l52.25 52.169 52.25-52.169c56.632-56.544 54.25-54.56 63.451-52.834 4.923.923 10.904 6.905 11.828 11.828 1.726 9.201 3.71 6.818-52.834 63.451l-52.169 52.25 52.17 52.25c56.543 56.632 54.56 54.249 52.833 63.451-.923 4.923-6.905 10.904-11.828 11.828-9.201 1.726-6.818 3.71-63.455-52.838l-52.255-52.173-51.745 51.696c-28.496 28.469-53.01 52.166-54.56 52.742-3.766 1.4-8.515 1.26-12.234-.36z"/></svg>;
+
+function getSessionsStyleOption(type) {
+    return (type || "recent") + "-sessions-style";
+}
+
+function getSessionsStyle(type) {
+    var v = handler.get_local_option(getSessionsStyleOption(type));
+    if (!v) v = type == "ab" ? "list" : "tile";
+    return v;
+}
+
+var searchPatterns = {};
+
+class SearchBar: Reactor.Component {
+    this var type = "ab";
+
+    function this(params) {
+        this.type = (params || {}).type || "ab";
+    }
+
+    function render() {
+        var value = searchPatterns[this.type] || "";
+        var me = this;
+        self.timer(1ms, function() { (me.search_id || {}).value = value; });
+        return <div .search-id>
+            <span .search-icon>{search_icon}</span>
+            <input|text id="tagsSearchInput" @{this.search_id} novalue={translate("Search ID")} />
+            {value && <span .clear-input>{clear_icon}</span>}
+        </div>;
+    }
+
+    event click $(span.clear-input) {
+        this.onChange('');
+    }
+
+    event change $(input) (_, el) {
+        this.onChange(el.value);
+    }
+
+    function onChange(v) {
+        search_akgun_addressbook(v.trim());
+        /*
+        searchPatterns[this.type] = v;
+        app.multipleSessions.update();
+        */
+    }
+    
+}
+
+
+function search_akgun_addressbook(value){
+    for (var el in $$(#tags li.abGroupListItem)) {
+        if(value=="" || el.text.toLowerCase().indexOf(value.toLowerCase())>=0){
+            el.attributes.removeClass("hidden");
+        }else{
+            el.attributes.addClass("hidden");
+        }
+    }
+    for (var el in $$(#tags a.abGroupName)) {
+        if(el.id!="-recent"){
+            var $visibled_clients = el.parent.$$(li.abGroupListItem:not(.hidden));
+            if($visibled_clients.length>0 && value!=""){
+                el.attributes.addClass("active");
+            }else{
+                el.attributes.removeClass("active");
+            }
+        }
+    }
+}
+
+class SessionStyle: Reactor.Component {
+    this var type = "ab"; 
+
+    function this(params) {
+        this.type = (params || {}).type || "ab";
+    }
+
+    function render() {
+        var sessionsStyle = getSessionsStyle(this.type);
+        return <div .sessions-tab style="margin-right: 15px;">
+                <span #refreshAbList >{svg_refresh}</span>
+            </div>;
+    }
+
+    event click $(span.inactive) {
+        var option = getSessionsStyleOption(this.type);
+        var sessionsStyle = getSessionsStyle(this.type);
+        handler.set_local_option(option, sessionsStyle == "tile" ? "list" : "tile");
+        if (is_linux) {
+            app.multipleSessions.stupidUpdate();
+        } else {
+            app.multipleSessions.update();
+        }
+    }
+
+    event click $(#refreshAbList) {
+        getAb();
+    }
+
+}
+
+class SessionList: Reactor.Component {
+    this var sessions = [];
+    this var type = "";
+    this var style;
+    
+    function this(params) {
+        this.sessions = params.sessions;
+        this.type = params.type || "";
+        this.style = getSessionsStyle(this.type);
+    }
+
+    function getSessions() {
+        var p = searchPatterns[this.type];
+        if (!p) return this.sessions;
+        var tmp = [];
+        this.sessions.map(function(s) {
+            var name = (s[4] || s.alias || "").toLowerCase();
+            var id = (s[0] || s.id || "").toLowerCase();
+            var user = (s[1] || "").toLowerCase();
+            var hostname = (s[2] || "").toLowerCase();
+            if (name.indexOf(p) >= 0 || id.indexOf(p) >= 0 || user.indexOf(p) >= 0 || hostname.indexOf(p) >= 0) {
+                tmp.push(s);
+            }
+        });
+        return tmp;
+    }
+
+    function render() {
+        var sessions = this.getSessions();
+        if (sessions.length == 0) {
+            return <div style="margin: *; font-size: 1.6em; width: 100px; text-align: center;">{translate("Empty")}</div>;
+        }
+        var me = this;
+        sessions = sessions.map(function(x) { return me.getSession(x); });
+        return <div .recent-sessions-content key={sessions.length}>
+            <popup>
+                <menu.context #remote-context>
+                    <li #connect>{translate('Connect')}</li>
+                    <li #transfer>{translate('Transfer file')}</li>
+                    <li #tunnel>{translate('TCP tunneling')}</li>
+                    <li #force-always-relay><span>{svg_checkmark}</span>{translate('Always connect via relay')}</li>
+                    <li #rdp>RDP<EditRdpPort /></li>
+                    <li #wol>{translate('WOL')}</li>
+                    <div .separator />
+                    {this.type != "lan" && <li #rename>{translate('Rename')}</li>}
+                    {this.type != "fav" && <li #remove>{translate('Remove')}</li>}
+                    {is_win && <li #shortcut>{translate('Create desktop shortcut')}</li>}
+                    <li #forget-password>{translate('Forget Password')}</li>
+                    <li #add-ab>Add to AddressBook</li>
+                    {(!this.type || this.type == "fav") && <li #add-fav>{translate('Add to Favorites')}</li>}
+                    {(!this.type || this.type == "fav") && <li #remove-fav>{translate('Remove from Favorites')}</li>}
+                    {this.type == "ab" && <li #edit-tag>{translate('Edit Tag')}</li>}
+                </menu>
+            </popup>
+            {sessions}
+        </div>;
+    }
+
+/*
+    event click $(#add-ab) (_, __) {
+        var me = this;
+        var id = me.text;
+        if(id.substr(0,21)=="BağlanDosya transferi"){
+            id = id.substr(-11).replace(" ","");
+        }else{
+            id = id.substr(7,9);
+        }
+        var ab_items_order = 0;
+        var ab_items_text = [];
+        msgbox(
+            "recent-add-ab",
+            "Add to AddressBook",
+            <div .form>
+            <div>Connection ID</div>
+            <input readonly style="display:block;size:*;margin:10px;padding-left:25px;" name="recentAddAbId" value={id}></input>
+            <div>Connection Title</div> 
+            <input style="display:block;size:*;margin:10px;padding-left:25px;" name="recentAddAbTitle"></input>
+            <div>Choose AddressBooks</div> 
+            {ab_new.map(function(k) {
+                if(k["is_group"]==true){
+                    ab_items_text.push(k.title);
+                    return <input style="display:block;size:*;margin:10px;padding-left:25px;" type="checkbox" name={"AddressBooks_" +(ab_items_order++)}>{k.title}</input>;
+                }
+            })}
+            </div>,
+            "",
+            function(res=null) {
+                if (!res) return;
+                var name = res.recentAddAbTitle;
+                for (var i = 0; i < ab_items_order; ++i) {
+                    var text = ab_items_text[i];
+                    var value = res["AddressBooks_"+i];
+                }
+            },
+        300);
+    }
+*/
+    
+
+    function getSession(s) {
+        var id = s[0] || s.id || "";
+        var username = s[1] || s.username || "";
+        var hostname = s[2] || s.hostname || "";
+        var platform = s[3] || s.platform || "";
+        var alias = s[4] || s.alias || "";
+        if (this.style == "list") {
+            return <div .remote-session-link .remote-session-list id={id} platform={platform} title={alias ? "ID: " + id : ""}>
+                <div .platform style={"background:"+string2RGB(id+platform, 0.5)}>
+                    {platform && platformSvg(platform, "white")}
+                </div>
+                <div .name>
+                    <div>
+                        <div #alias .ellipsis>{alias ? alias : formatId(id)}</div>
+                        <div .username .ellipsis>{username}@{hostname}</div>
+                    </div>
+                </div>
+                <div>
+                    {svg_menu}
+                </div>
+            </div>;
+        }
+        return <div .remote-session-link .remote-session id={id} platform={platform} title={alias ? "ID: " + id : ""} style={"background:"+string2RGB(id+platform, 0.5)}>
+            <div .platform>
+                {platform && platformSvg(platform, "white")}
+                <div .username .ellipsis>{username}@{hostname}</div>
+            </div>
+            <div .text>
+                <div #alias .ellipsis>{alias ? alias : formatId(id)}</div>
+                {svg_menu}
+            </div>
+        </div>;
+    }
+
+    event dblclick $(div.remote-session-link) (evt, me) {
+        createNewConnect(me.id, "connect");
+    }
+    
+    event click $(#menu) (_, me) {
+        var id = me.parent.parent.id;
+        var platform = me.parent.parent.attributes["platform"];
+        this.$(#rdp).style.set{
+            display: (platform == "Windows" && is_win) ? "block" : "none",
+        };
+        this.$(#forget-password).style.set{
+            display: handler.peer_has_password(id) ? "block" : "none",
+        };
+        if (!this.type || this.type == "fav") {
+            var in_fav = handler.get_fav().indexOf(id) >= 0;
+            this.$(#add-fav).style.set{
+                display: in_fav ? "none" : "block",
+            };
+            this.$(#remove-fav).style.set{
+                display: in_fav ? "block" : "none",
+            };
+        }
+        // https://sciter.com/forums/topic/replacecustomize-context-menu/
+        var menu = this.$(menu#remote-context);
+        current_menu_peer_id = id;
+        var el = this.$(li#force-always-relay);
+        if (el) {
+          var force = handler.get_peer_option(id, "force-always-relay");
+          el.attributes.toggleClass("selected", force == "Y");
+        }
+        var conn = this.$(menu #connect);
+        if (conn) {
+          var alias = me.parent.parent.$(#alias);
+          if (alias) {
+            alias = alias.text.replace(' ', '');
+            if (alias != id) {
+              conn.text = translate('Connect') + ' ' + id;
+            } else {
+              conn.text = translate('Connect');
+            }
+          }
+        }
+        me.popup(menu);
+    }
+
+    event click $(menu#remote-context li) (evt, me) {
+        var action = me.id;
+        var id = current_menu_peer_id;
+        if (action == "connect") {
+            createNewConnect(id, "connect");
+        } else if (action == "transfer") {
+            createNewConnect(id, "file-transfer");
+        } else if (action == "wol") {
+            handler.send_wol(id);
+        } else if (action == "remove") {
+            if (this.type == "ab") {
+                for (var i = 0; i < ab.peers.length; ++i) {
+                    if (ab.peers[i].id == id) {
+                        ab.peers.splice(i, 1);
+                        app.update();
+                        updateAb();
+                        break;
+                    }
+                }
+            } else if (this.type == "lan") {
+                handler.remove_discovered(id);
+                app.update();
+            } else {
+                handler.remove_peer(id);
+                app.update();
+            }
+        } else if (action == "forget-password") {
+            handler.forget_password(id);
+        } else if (action == "shortcut") {
+            handler.create_shortcut(id);
+        } else if (action == "rdp") {
+            if (is_edit_rdp_port) {
+                is_edit_rdp_port = false;
+                return;
+            }
+            createNewConnect(id, "rdp");
+        } else if (action == "add-fav") {
+            var favs = handler.get_fav();
+            if (favs.indexOf(id) < 0) {
+                favs = [id].concat(favs);
+                handler.store_fav(favs);
+            }
+            app.multipleSessions.update();
+            app.update();
+        } else if (action == "remove-fav") {
+            var favs = handler.get_fav();
+            var i = favs.indexOf(id);
+            favs.splice(i, 1);
+            handler.store_fav(favs);
+            app.multipleSessions.update();
+        } else if (action == "tunnel") {
+            createNewConnect(id, "port-forward");
+        } else if (action == "rename") {
+            var old_name = handler.get_peer_option(id, "alias");
+            var abPeer;
+            if (this.type == "ab") {
+                for (var v in ab.peers) {
+                    if (v.id == id) {
+                        abPeer = v;
+                        old_name = v.alias || "";
+                    }
+                }
+            }
+            msgbox("custom-rename", "Rename", "<div .form> \
+                <div><input|text name='name' .outline-focus style='width: *; height: 23px', value='" + old_name + "' /></div> \
+                </div> \
+                ", "", function(res=null) {
+                    if (!res) return;
+                    var name = (res.name || "").trim();
+                    if (name != old_name) {
+                        if (abPeer) {
+                            abPeer.alias = name;
+                            updateAb();
+                        }
+                        handler.set_peer_option(id, "alias", name);
+                    }
+                    app.update();
+                });
+        } else if (action == "force-always-relay") {
+            var force = handler.get_peer_option(id, "force-always-relay");
+            handler.set_peer_option(id, "force-always-relay", force == "Y" ? "" : "Y");
+        } else if (action == "edit-tag") {
+            var peer;
+            for (var v in ab.peers) {
+                if (v.id == id) {
+                    peer = v;
+                }
+            }
+            if (!peer) return;
+            msgbox("custom-edit-tag", "Edit Tag", <SelectTags tags={peer.tags || []} />, "", function(res=null) {
+                    if (!res) return;
+                    peer.tags = selectTags.tags;
+                    updateAb();
+                }, 260, 500, 0, "size: *; margin: 2em 0;");
+        }
+    }
+}
+
+function getSessionsType() {
+    return handler.get_local_option("show-sessions-type");
+}
+
+class Favorites: Reactor.Component {
+    function render() {
+        var sessions = handler.get_fav().map(function(f) {
+            return handler.get_peer(f);
+        });
+        return <SessionList sessions={sessions} type="fav" />;
+    }
+}
+
+class MultipleSessions: Reactor.Component {
+    function render() {
+        var type = "ab"; /* getSessionsType(); */
+        return  <div>
+                <div .sessions-bar>
+                    <div style="display:none;width:*" .sessions-tab #sessions-type>
+                        <span #ab style="width:*" class={type == "ab" ? 'active' : 'inactive'}>{translate('Address book')}</span>
+                    </div>
+                    {getUserName() ? <SearchBar /> : ""}
+                    {getUserName() ? <SessionStyle /> : ""}
+                </div>
+                <AddressBook />
+            </div>;
+    }
+
+    function stupidUpdate() {
+        /* hidden is workaround of stupid sciter bug */
+        this.hidden = true;
+        this.update();
+        var me = this;
+        self.timer(60ms, function() {
+            me.hidden = false;
+            me.update();
+        self.timer(30ms, function() { me.onSize(); });
+        });
+    }
+
+    event click $(div#sessions-type span.inactive) (_, el) {
+        if (el.id == "lan") {
+            discover();
+        }
+        handler.set_local_option('show-sessions-type', el.id || "");
+        this.stupidUpdate();
+    }
+
+
+
+    function onSize() {
+        var w = this.$(.sessions-bar .sessions-tab).box(#width);
+        var len = translate('Recent sessions').length;
+        var totalChars = 0;
+        var nEle = 0;
+        for (var el in this.$$(#sessions-type span)) {
+            nEle += 1;
+            totalChars += el.text.length;
+        }
+        for (var el in this.$$(#sessions-type span)) {
+            var maxWidth = (w - nEle * 2 * 8) * el.text.length / totalChars;
+            if (maxWidth < 0) maxWidth = 36;
+            el.style.set{
+                "max-width": maxWidth + "px",
+            };
+        }
+    }
+}
+
+function discover() {
+    handler.discover();
+    var tries = 15;
+    function update() {
+        self.timer(300ms, function() {
+            tries -= 1;
+            if (tries == 0) return;
+            update();
+            var p = (app || {}).multipleSessions;
+            if (p) {
+                p.update();
+            }
+        });
+    }
+    update();
+}
+
+if (getSessionsType() == "lan" && handler.is_installed()) {
+    discover();
+}
+
+class LanPeers: Reactor.Component {
+    function render() {
+        var sessions = [];
+        try {
+            sessions = JSON.parse(handler.get_lan_peers());
+        } catch (_) {}
+        return <SessionList sessions={sessions} type="lan" />;
+    }
+}
+
+view.on("size", function() { if (app && app.multipleSessions) app.multipleSessions.onSize(); });
+
+/*
+{
+    peers: [{id: "abcd", username: "", hostname: "", platform: "", alias: "", tags: ["", "", ...]}, ...],
+    tags: [],
+}
+*/
+
+function akgun_error(err) {
+    msgbox("err-msgbox", "Error" , <div>{err}</div>, "", function(res=null) {}, 200);
+}
+function handleAbError(err) {
+    abLoading = false;
+    err = translate(err);
+    stderr.println(err);
+    abError = err;
+    app.update();
+}
+
+
+function getAb() {
+    abLoading = true;
+    abError = "";
+    app.update();
+    httpRequest(handler.get_api_server() + "/api/ab/get", #post, {}, function(data,status) {
+        if (data) {
+            if (data.error) {
+                handleAbError(data.error);
+                return;
+            }
+            var tm = data.updated_at;
+            akgundata.groups = JSON.parse(data.groups);
+            akgundata.group_keys = JSON.parse(data["group_keys"]);
+            akgundata.clients = JSON.parse(data.clients);
+            akgundata.client_keys = JSON.parse(data["client_keys"]);
+            ab.tags = [];
+            ab.peers = [];
+
+        }
+        abLoading = false;
+        app.update();
+    }, function(err) {
+        handleAbError(err);
+    }, getHttpHeaders());
+}
+
+function updateAb() {
+return;
+    httpRequest(handler.get_api_server() + "/api/ab", #post, { data: JSON.stringify(ab) }, function(data) {
+    }, function(err) {
+    }, getHttpHeaders());
+}
+
+function resetAb() {
+return;
+    ab = { tags: [], peers: [] };
+    app.update();
+}
+
+function updateAbPeer() {
+return;
+    if (ab.peers.length == 0) return;
+    // to-do: inefficient
+    var sessions = handler.get_recent_sessions();
+    if (sessions.length == 0) return;
+    var s = sessions[0];
+    var id = s[0] || "";
+    var p;
+    for (var tmp in ab.peers) {
+        if (tmp.id == id) p = tmp;
+    }
+    if (!p) return;
+    var username = s[1] || "";
+    var hostname = s[2] || "";
+    var platform = s[3] || "";
+    var alias = s[4] || "";
+    var updated;
+    if (username != (p.username || "")) {
+        p.username = username;
+        updated = true;
+    }
+    if (hostname != (p.hostname || "")) {
+        p.hostname = hostname;
+        updated = true;
+    }
+    if (platform != (p.platform || "")) {
+        p.platform = platform;
+        updated = true;
+    }
+    if (alias != (p.alias || "")) {
+        if (alias) {
+            p.alias = alias;
+        } else if (p.alias) {
+            handler.set_peer_option(id, "alias", p.alias);
+        }
+        updated = true;
+    }
+    if (updated) {
+        updateAb();
+        stdout.println("Ab peer updated");
+    }
+}
+
+var is_edit_rdp_port;
+class EditRdpPort: Reactor.Component {
+    function render() {
+        return <span style="margin-left: 12px; padding: 0 6px; display: inline-block;" .link>{svg_edit}</span>;
+    }
+
+    function onMouse(evt) {
+        if (evt.type == Event.MOUSE_DOWN) {
+            is_edit_rdp_port = true;
+            editRdpPort();
+        }
+    }
+}
+
+function editRdpPort() {
+    var id = current_menu_peer_id;
+    var p0 = handler.get_peer_option(id, "rdp_port");
+    var port = p0 ? <input|text name='port' value={p0} /> : 
+                    <input|text name='port' novalue={3389} />;
+    var name0 = handler.get_peer_option(id, "rdp_username");
+    var pass0 = handler.get_peer_option(id, "rdp_password");
+    msgbox("custom-rdp-port", 'RDP ' + translate('Settings'), <div .form .set-password> 
+            <div><span>{translate('Port')}:</span>{port}</div> 
+            <div><span>{translate('Username')}:</span><input|text name="username" value={name0} /></div> 
+            <div><span>{translate('Password')}:</span><PasswordComponent value={pass0} /></div> 
+        </div>, "", function(res=null) {
+        if (!res) return;
+        var p = (res.port || '').trim();
+        if (p != p0) {
+            if (!p) p = '0';
+            p = p.toNumber();
+            if (p < 0 || p != p.toInteger()) {
+                return translate("Invalid port");
+            }
+            if (p == 0) p = "";
+            else p = p.toInteger() + '';
+            handler.set_peer_option(id, "rdp_port", p);
+        }
+
+        var name = (res.username || '').trim();
+        if (name != name0) {
+            handler.set_peer_option(id, "rdp_username", name);
+        }
+
+        var pass = (res.password || '').trim();
+        if (pass != pass0) {
+            handler.set_peer_option(id, "rdp_password", pass);
+        }
+      }, 240);
+}

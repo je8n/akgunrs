@@ -1,0 +1,22 @@
+name: Build Windows x86 - Agent Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent
+    paths-ignore:
+      - ".github/**"
+      - "docs/**"
+      - "README.md"
+      - "res/**"
+      - "appimage/**"
+      - "flatpak/**"
+
+jobs:
+  run-flutter-nightly-build:
+    uses: ./.github/workflows/windowsx86-build-agent.yml
+    secrets: inherit
+    with:
+      upload-artifact: true
+      upload-tag: "WindowsX86"
