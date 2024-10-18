@@ -1,0 +1,22 @@
+name: Build Windows x86 - Main Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - app
+    paths-ignore:
+      - ".github/**"
+      - "docs/**"
+      - "README.md"
+      - "res/**"
+      - "appimage/**"
+      - "flatpak/**"
+
+jobs:
+  run-flutter-nightly-build:
+    uses: ./.github/workflows/windowsx86-build-it.yml
+    secrets: inherit
+    with:
+      upload-artifact: true
+      upload-tag: "WindowsX86"
